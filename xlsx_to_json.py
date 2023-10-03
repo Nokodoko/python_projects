@@ -1,10 +1,15 @@
 #!/bin/env python
 
+import sys
+
+FILE = sys.argv[1]
+OUTPUT = sys.argv[2]
+
 
 import pandas as pd
-data = pd.read_excel('~/Downloads/FS Application Monitoring - List of Applications v2 - with POCs (2).xlsx')
+data = pd.read_excel(FILE)
 
 json_data = data.to_json(orient='records')
 
-with open('data.json', 'w') as json_file:
+with open(OUTPUT, 'w') as json_file:
     json_file.write(json_data)
