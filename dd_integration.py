@@ -52,6 +52,8 @@ def integrations(id):
         result_join = "\n".join(result)
         print(result_join, "\n")
 
-    for account_id, account_name in account_ids.items():
+
+def integrtion_writer(list):
+    for account_id, account_name in list.items():
         print(account_name)
         integrations(account_id)
