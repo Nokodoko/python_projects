@@ -55,11 +55,11 @@ def integrations(app_id, app_name):
 
 def integration_writer(list, cloud_service):
     integration_list = pd.DataFrame()
-    for account_id, account_name in list.items():
-        print(account_name)
-        df = integrations(account_id, account_name)
+    for account_id, application_name in list.items():
+        print(application_name)
+        df = integrations(account_id, application_name)
         if not df.empty:
-            df['account_name'] = account_name
+            df['application_name'] = application_name
             df['account_id'] = account_id
             integration_list = pd.concat(
                 [integration_list, df], ignore_index=True)
@@ -78,7 +78,7 @@ def integration_writer(list, cloud_service):
             worksheet.set_column(i, i, max_len)
 
         account_name_index = integration_list.columns.get_loc(
-            'ACCOUNT_NAME')
+            'APPLICATION_NAME')
 
     worksheet.autofilter(0, account_name_index, len(
         integration_list), account_name_index)
