@@ -36,7 +36,6 @@ with pd.ExcelWriter('APM_Implementation_Requests.xlsx', engine='xlsxwriter') as 
     header_format = workbook.add_format({
         'bold': True,
         'text_wrap': True,
-        # 'valign': 'top',
         'fg_color': "#D7E4BC",
         'border': 1
     })
@@ -51,7 +50,7 @@ with pd.ExcelWriter('APM_Implementation_Requests.xlsx', engine='xlsxwriter') as 
 
     cloud_provider = [
         "aws",
-        "azure"
+        "azure",
         "gcp",
         "vdc"
     ]
