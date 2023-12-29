@@ -1,5 +1,5 @@
-all: dd_integration
-dd_integration:
-	./dd_integration.py
+all: build clean
+build:
+	./basic.py
 clean:
-	rm ./fs_integrations_list.xlsx
+	rm testing_pandas.xlsx
