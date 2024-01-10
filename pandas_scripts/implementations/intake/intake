@@ -13,9 +13,7 @@ question_col = {
     "Technologies": "",
     "Application URL": "",
     "Monitoring Tiers": "",
-    "Operating System": "",
-    "Host Name": "",
-    "CI/CD Pipeline": ""
+    "Operating System": ""
 }
 
 intake_df = pd.DataFrame([question_col])
@@ -50,14 +48,14 @@ with pd.ExcelWriter('APM_Implementation_Requests.xlsx', engine='xlsxwriter') as 
         "no"
     ]
 
-    cloud_provider_list = [
+    cloud_provider = [
         "aws",
         "azure",
         "gcp",
         "vdc"
     ]
 
-    cloud_service_list = [
+    cloud_service = [
         "custom",
         "ec2",
         "ecr",
@@ -70,7 +68,7 @@ with pd.ExcelWriter('APM_Implementation_Requests.xlsx', engine='xlsxwriter') as 
         "sqs",
     ]
 
-    technologies_list = [
+    technologies = [
         "java",
         ".net",
         "node",
@@ -84,11 +82,6 @@ with pd.ExcelWriter('APM_Implementation_Requests.xlsx', engine='xlsxwriter') as 
         "windows"
     ]
 
-    ci_cd_list = [
-        "jenkins",
-        "puppet"
-    ]
-
     confirm_cloud_app = {
         'validate': 'list',
         'source': cloud_application,
@@ -97,31 +90,25 @@ with pd.ExcelWriter('APM_Implementation_Requests.xlsx', engine='xlsxwriter') as 
 
     cloud_data_validation = {
         'validate': 'list',
-        'source': cloud_provider_list,
+        'source': cloud_provider,
         'dropdown': True
     }
 
     cloud_service_validation = {
         'validate': 'list',
-        'source': cloud_service_list,
+        'source': cloud_service,
         'dropdown': True
     }
 
     technologies_validation = {
         'validate': 'list',
-        'source': technologies_list,
+        'source': technologies,
         'dropdown': True
     }
 
     os_validation = {
         'validate': 'list',
         'source': os_list,
-        'dropdown': True
-    }
-
-    ci_cd_validation = {
-        'validate': 'list',
-        'source': ci_cd_list,
         'dropdown': True
     }
 
@@ -139,9 +126,6 @@ with pd.ExcelWriter('APM_Implementation_Requests.xlsx', engine='xlsxwriter') as 
 
     os_validation = validation(
         2, 10, os_validation, apm_impl_worksheet)
-
-    ci_cd_validation = validation(
-        2, 12, ci_cd_validation, apm_impl_worksheet)
 
     for i, column in enumerate(intake_df.columns):
         col_len = intake_df[column].astype(str).apply(len)
