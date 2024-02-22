@@ -1,0 +1,14 @@
+/home/n0ko/programming/python_projects/rust_python/matur/target/debug/deps/pyo3_build_config-f55acdcf2301d1c5.rmeta: /home/n0ko/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.20.2/src/lib.rs /home/n0ko/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.20.2/src/errors.rs /home/n0ko/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.20.2/src/impl_.rs /home/n0ko/programming/python_projects/rust_python/matur/target/debug/build/pyo3-build-config-fd091ce518996f6b/out/pyo3-build-config-file.txt /home/n0ko/programming/python_projects/rust_python/matur/target/debug/build/pyo3-build-config-fd091ce518996f6b/out/pyo3-build-config.txt
+
+/home/n0ko/programming/python_projects/rust_python/matur/target/debug/deps/libpyo3_build_config-f55acdcf2301d1c5.rlib: /home/n0ko/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.20.2/src/lib.rs /home/n0ko/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.20.2/src/errors.rs /home/n0ko/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.20.2/src/impl_.rs /home/n0ko/programming/python_projects/rust_python/matur/target/debug/build/pyo3-build-config-fd091ce518996f6b/out/pyo3-build-config-file.txt /home/n0ko/programming/python_projects/rust_python/matur/target/debug/build/pyo3-build-config-fd091ce518996f6b/out/pyo3-build-config.txt
+
+/home/n0ko/programming/python_projects/rust_python/matur/target/debug/deps/pyo3_build_config-f55acdcf2301d1c5.d: /home/n0ko/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.20.2/src/lib.rs /home/n0ko/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.20.2/src/errors.rs /home/n0ko/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.20.2/src/impl_.rs /home/n0ko/programming/python_projects/rust_python/matur/target/debug/build/pyo3-build-config-fd091ce518996f6b/out/pyo3-build-config-file.txt /home/n0ko/programming/python_projects/rust_python/matur/target/debug/build/pyo3-build-config-fd091ce518996f6b/out/pyo3-build-config.txt
+
+/home/n0ko/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.20.2/src/lib.rs:
+/home/n0ko/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.20.2/src/errors.rs:
+/home/n0ko/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.20.2/src/impl_.rs:
+/home/n0ko/programming/python_projects/rust_python/matur/target/debug/build/pyo3-build-config-fd091ce518996f6b/out/pyo3-build-config-file.txt:
+/home/n0ko/programming/python_projects/rust_python/matur/target/debug/build/pyo3-build-config-fd091ce518996f6b/out/pyo3-build-config.txt:
+
+# env-dep:CARGO_PKG_VERSION=0.20.2
+# env-dep:OUT_DIR=/home/n0ko/programming/python_projects/rust_python/matur/target/debug/build/pyo3-build-config-fd091ce518996f6b/out

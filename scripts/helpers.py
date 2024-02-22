@@ -1,6 +1,23 @@
 #!/bin/env python3
-
 import subprocess as sp
+from typing import List
+import sys
+
+
+def dmenu(color: str, prompt: str) -> str:
+    dmenu_command: List[str] = ["dmenu", "-m", "0", "-fn", "VictorMono:size=20",
+                                "-nf", "green", "-nb", "black",
+                                "-nf", color, "-sb", "black", "-p", prompt]
+    dmenu = sp.Popen(dmenu_command, stdin=sp.PIPE, stdout=sp.PIPE, text=True)
+    output: str
+    output, err = dmenu.communicate()
+    if dmenu.returncode != 0:
+        notify = err
+        notify_send(notify, 'low')
+        sys.exit(1)
+    else:
+        return output.strip()
+
 
 def notify_send(msg: str, criticality: str) -> str | None:
     match criticality:
@@ -26,6 +43,7 @@ def notify_send(msg: str, criticality: str) -> str | None:
                 return None
             else:
                 return output.strip()
+
 
 if __name__ == "__main__":
     pass

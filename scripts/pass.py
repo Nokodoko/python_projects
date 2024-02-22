@@ -34,20 +34,21 @@ def dmenu(list: List[str], msg: str) -> str | None:
                 h.notify_send(f'{err}', 'critical')
                 return None
             else:
+                h.notify_send('Selected!', 'low')
                 return output.strip()
     except Exception as e:
         h.notify_send(f'Error with dmenu {e}', 'critical')
 
 
 def clip(selection: str) -> None:
-    xclip = ['xclip', '-sel', 'c']
-    clipped = sp.Popen(xclip, stdin=sp.PIPE, stdout=sp.PIPE, text=True)
-    err: str
+    xclip = ['xclip', '-sel', 'c', '-l', '1']
+    clipped = sp.Popen(xclip, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, text=True)
     _, err = clipped.communicate(input=selection)
     if clipped.returncode != 0:
         h.notify_send(f'No password Copied:{err}', 'critical')
     else:
-        h.notify_send('Selected!', 'low')
+        h.notify_send('Clipboard Closed!', 'low')
+#
 
 
 def parser(program: str) -> str | None:
