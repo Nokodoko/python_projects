@@ -47,7 +47,7 @@ def clip(selection: str) -> None:
     if clipped.returncode != 0:
         h.notify_send(f'No password Copied:{err}', 'critical')
     else:
-        h.notify_send('Clipboard Closed!', 'low')
+        h.notify_send('Clipboard Cleared!', 'low')
 #
 
 
