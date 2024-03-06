@@ -24,10 +24,11 @@ def notify_send(msg: str, criticality: str) -> str | None:
             err: str
             output, err = notify.communicate()
             if notify.returncode != 0:
-                print(f"Error running notify-send: {err}")
+                print(f"Error running notify-send: {err if err else 'Unknown error'}")
                 return None
             else:
                 return output.strip()
+
 
 def dmenu(input: List[str], msg_fg:str, ns_msg:str, prompt:str) -> str|None:
     dmenu_command = ["dmenu", "-m", "0", "-fn", "VictorMono:size=20",

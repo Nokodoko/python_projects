@@ -1,42 +1,40 @@
 #!/bin/env python3
 
 import requests
-import json
+from typing import Dict
 import os
 
-api_key = os.getenv("DD_API_KEY")
-app_key = os.getenv("DD_APP_KEY")
+API_KEY: str = os.getenv("DD_API_KEY", "")
+if not API_KEY:
+    raise ValueError("DD_API_KEY is not set")
 
-fs_headers = {
+APP_KEY: str = os.getenv("DD_APP_KEY", "")
+if not APP_KEY:
+    raise ValueError("DD_APP_KEY is not set")
+
+FS_HEADERS: Dict[str, str] = {
     "Accept": "application/json",
-    "DD-API-KEY": api_key,
-    "DD-APPLICATION-KEY": app_key,
+    "DD-API-KEY": API_KEY,
+    "DD-APPLICATION-KEY": APP_KEY,
 }
 
 
-def dashboards():
-    url = "https://api.ddog-gov.com/api/v1/dashboard"
-    headers = fs_headers
+def dashboards() -> None:
+    url: str = "https://api.ddog-gov.com/api/v1/dashboard"
+    headers: Dict[str, str] = FS_HEADERS
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
         print(f"{response.status_code}")
-    else:
-        result = response.json()
 
-        dashboard_list = result.get('dashboards', [])
-        for dashboard in dashboard_list:
-            if dashboard.get('author_handle') == 'christopher.montgomery@eccoselect.com':
-                auth_name = dashboard.get('author_handle')
-                dash_name = dashboard.get('title')
-                dash_id = dashboard.get('id')
-                print(f"By:{auth_name}\t Name:{dash_name}\n Id:{dash_id}")
-
-    # print(result)
+    result = response.json()
+    dashboard_list = result.get('dashboards', [])
+    for dashboard in dashboard_list:
+        if dashboard.get('author_handle') == 'christopher.montgomery@eccoselect.com':
+            auth_name = dashboard.get('author_handle')
+            dash_name = dashboard.get('title')
+            dash_id = dashboard.get('id')
+            print(f"By:{auth_name}\t Name:{dash_name}\n Id:{dash_id}")
 
 
-dashboards()
-
-# auth_name = response.json().get('author_handle')
-# dash_name = response.json().get('title')
-# dash_id = response.json().get('id')
-# print(f"By:{auth_name}\t Name:{dash_name}\n Id:{dash_id}")
+if __name__ == "__main__":
+    dashboards()

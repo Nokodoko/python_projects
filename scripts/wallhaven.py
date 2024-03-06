@@ -37,27 +37,26 @@ def search_pics() -> None:
         response = requests.get(url=SEARCH, headers=search_headers, params=params, stream=True)
         if response.status_code != 200:
             print(f"Error: {response.status_code}")
-        else:
-            pictures = response.json()
-            url_list: List[str] = [items['path'] for items in pictures['data']]
-            pic_url: str
-            file_number: int = 0
-            for pic_url in url_list:
-                filename: str = os.path.basename(QUERY)
-                file_extension: str = os.path.splitext(filename)[1]
-                local_file: str = os.path.expanduser(f'{DESTROY}{filename}_{file_number}_{page}{file_extension}')
-                os.makedirs(os.path.dirname(local_file), exist_ok=True)
+        pictures = response.json()
+        url_list: List[str] = [items['path'] for items in pictures['data']]
+        pic_url: str
+        file_number: int = 0
+        for pic_url in url_list:
+            filename: str = os.path.basename(QUERY)
+            file_extension: str = os.path.splitext(filename)[1]
+            local_file: str = os.path.expanduser(f'{DESTROY}{filename}_{file_number}_{page}{file_extension}')
+            os.makedirs(os.path.dirname(local_file), exist_ok=True)
 
-                file_response = requests.get(pic_url, stream=True)
-                if file_response.status_code == 200:
-                    with open(local_file, 'wb') as file:
-                        for chunk in response.iter_content(chunk_size=8192):
-                            if chunk:
-                                file.write(chunk)
-                                file_number += 1
-                                h.notify_send(f'Download: {file_number}', 'low')
-                            else:
-                                h.notify_send(f'{pic_url}:{file_response.status_code}', 'critical')
+            file_response = requests.get(pic_url, stream=True)
+            if file_response.status_code == 200:
+                with open(local_file, 'wb') as file:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        if chunk:
+                            file.write(chunk)
+                            file_number += 1
+                            h.notify_send(f'Download: {file_number}', 'low')
+                        else:
+                            h.notify_send(f'{pic_url}:{file_response.status_code}', 'critical')
         h.notify_send('Completed Download', 'low')
 
 search_pics()

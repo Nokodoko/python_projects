@@ -1,0 +1,31 @@
+{
+  "ChatCompletionChunk": {
+    "id": "2ce9df12-ac0e-46cb-a157-b276941b6d3c",
+    "choices": [
+      {
+        "delta": {
+          "content": " green can",
+          "function_call": null,
+          "role": "assistant",
+          "tool_calls": null
+        },
+        "finish_reason": null,
+        "index": 0,
+        "logprobs": null,
+        "message": {
+          "role": "assistant",
+          "content": "To create the primary color green, you would typically mix two other primary colors: blue and yellow. When these two colors are combined in the right proportions, they produce green. It's important to note that in some color models, like RGB for digital displays, cyan is considered a primary color instead of blue, and green can"
+        }
+      }
+    ],
+    "created": 3638916,
+    "model": "mistral-7b-instruct",
+    "object": "chat.completion",
+    "system_fingerprint": null,
+    "usage": {
+      "prompt_tokens": 39,
+      "completion_tokens": 69,
+      "total_tokens": 108
+    }
+  }
+}
