@@ -88,7 +88,7 @@ def proc_list(user: str) -> str | None:
 
 
 def dmenu() -> str:
-    dmenu_command = ["dmenu", "-m", "0", "-fn", "VictorMono:size=20",
+    dmenu_command = ["dmenu", "-m", "0", "-fn", "VictorMono:size=10",
                      "-nf", "green", "-nb", "black",
                      "-nf", "red", "-sb", "black"]
     dmenu = sp.Popen(dmenu_command, stdin=sp.PIPE, stdout=sp.PIPE, text=True)
