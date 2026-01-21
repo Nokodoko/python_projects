@@ -58,4 +58,3 @@ def user_prompt() -> str:
     return collection
 
 def collector():
-

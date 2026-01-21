@@ -2,5 +2,6 @@ data.json
 forest.json
 tasks.json
 __pycache__
+.terraform
 
 

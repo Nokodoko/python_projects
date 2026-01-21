@@ -1,12 +1,12 @@
 #!/bin/env python3
 
 import os
-from typing import List, Union
+from typing import List
 import subprocess as sp
 import sys
 import helpers as h
 
-PASS: Union[str, None] = os.getenv('PASS')
+PASS: str = os.getenv('PASS')
 
 
 def choice(file: str) -> List[str] | None:
@@ -20,10 +20,10 @@ def choice(file: str) -> List[str] | None:
 
 
 def dmenu(list: List[str], msg: str) -> str | None:
-    dmenu_command = ["dmenu", "-m", "0", "-fn", "VictorMono:size=10",
+    dmenu_command = ["dmenu", "-m", "0", "-fn", "VictorMono Nerd Font:size=20",
                      "-nf", "green", "-nb", "black",
                      "-nf", "cyan", "-sb", "black",
-                     "-p", msg]
+                     "-p", "🔒", "-bc", "#008b8b", "-t", "Select Password"]
     try:
         with sp.Popen(dmenu_command, stdin=sp.PIPE,
                       stderr=sp.PIPE, stdout=sp.PIPE, text=True) as dm:
@@ -34,21 +34,22 @@ def dmenu(list: List[str], msg: str) -> str | None:
                 h.notify_send(f'{err}', 'critical')
                 return None
             else:
-                h.notify_send(f'Selected {output.strip()}!', 'low')
+                h.notify_send('Selected!', 'low')
                 return output.strip()
     except Exception as e:
         h.notify_send(f'Error with dmenu {e}', 'critical')
 
 
 def clip(selection: str) -> None:
+    # xclip = ['xclip', '-sel', 'c', '-l', '1']
     xclip = ['xclip', '-sel', 'c']
-    clipped = sp.Popen(xclip, stdin=sp.PIPE, stdout=sp.PIPE, text=True)
-    err: str
+    clipped = sp.Popen(xclip, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, text=True)
     _, err = clipped.communicate(input=selection)
     if clipped.returncode != 0:
         h.notify_send(f'No password Copied:{err}', 'critical')
     else:
-        h.notify_send('Cliboard Cleared', 'low')
+        h.notify_send('Clipboard Cleared!', 'low')
+#
 
 
 def parser(program: str) -> str | None:
