@@ -88,7 +88,7 @@ def proc_list(user: str) -> str | None:
 
 
 def dmenu() -> str:
-    dmenu_command = ["dmenu", "-m", "0", "-fn", "VictorMono Nerd Font:size=20",
+    dmenu_command = ["dmenu", "-m", "0", "-fn", "VictorMono Nerd Font:size=11",
                      "-nf", "white", "-nb", "black",
                      "-sf", "red", "-sb", "black",
                      "-t", "Kill", "-bc", "red", "-p", "💀"]

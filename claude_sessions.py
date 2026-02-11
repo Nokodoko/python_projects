@@ -15,9 +15,62 @@ from typing import List, Optional
 CLAUDE_PROJECTS_DIR = Path.home() / ".claude" / "projects"
 
 
+def parse_session_jsonl(jsonl_path: Path) -> Optional[dict]:
+    """Parse a session .jsonl file to extract session info."""
+    custom_title = ""
+    first_prompt = ""
+    project_path = ""
+    session_id = jsonl_path.stem
+    modified = ""
+
+    try:
+        with open(jsonl_path, "r") as f:
+            for line in f:
+                try:
+                    entry = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+
+                # Get custom title if present
+                if entry.get("type") == "custom-title":
+                    custom_title = entry.get("customTitle", "")
+
+                # Get project path from user messages
+                if entry.get("type") == "user" and not project_path:
+                    project_path = entry.get("cwd", "")
+
+                # Get first prompt from user messages
+                if entry.get("type") == "user" and not first_prompt:
+                    msg = entry.get("message", {})
+                    content = msg.get("content", [])
+                    for item in content:
+                        if isinstance(item, dict) and item.get("type") == "text":
+                            first_prompt = item.get("text", "")[:60]
+                            break
+                        elif isinstance(item, str):
+                            first_prompt = item[:60]
+                            break
+
+        # Get modified time from file
+        modified = jsonl_path.stat().st_mtime
+
+        session_name = custom_title or first_prompt or session_id
+        if project_path and session_id:
+            return {
+                "sessionId": session_id,
+                "projectPath": project_path,
+                "sessionName": session_name,
+                "modified": modified,
+            }
+    except (IOError, OSError):
+        pass
+    return None
+
+
 def get_sessions() -> List[dict]:
-    """Find and parse all sessions-index.json files."""
+    """Find and parse all sessions from index files and individual .jsonl files."""
     sessions = []
+    indexed_sessions = set()  # Track sessions found in index files
 
     if not CLAUDE_PROJECTS_DIR.exists():
         return sessions
@@ -27,36 +80,49 @@ def get_sessions() -> List[dict]:
             continue
 
         index_file = project_dir / "sessions-index.json"
-        if not index_file.exists():
-            continue
 
-        try:
-            with open(index_file, "r") as f:
-                data = json.load(f)
+        # Try to read from sessions-index.json first
+        if index_file.exists():
+            try:
+                with open(index_file, "r") as f:
+                    data = json.load(f)
 
-            for entry in data.get("entries", []):
-                session_id = entry.get("sessionId", "")
-                project_path = entry.get("projectPath", "")
-                custom_title = entry.get("customTitle", "")
-                summary = entry.get("summary", "")
-                first_prompt = entry.get("firstPrompt", "")[:60]
-                modified = entry.get("modified", "")
+                for entry in data.get("entries", []):
+                    session_id = entry.get("sessionId", "")
+                    project_path = entry.get("projectPath", "")
+                    custom_title = entry.get("customTitle", "")
+                    summary = entry.get("summary", "")
+                    first_prompt = entry.get("firstPrompt", "")[:60]
+                    modified = entry.get("modified", "")
 
-                # Use customTitle, then summary, then firstPrompt as session name
-                session_name = custom_title or summary or first_prompt
+                    # Use customTitle, then summary, then firstPrompt as session name
+                    session_name = custom_title or summary or first_prompt
 
-                if project_path and session_id:
-                    sessions.append({
-                        "sessionId": session_id,
-                        "projectPath": project_path,
-                        "sessionName": session_name,
-                        "modified": modified,
-                    })
-        except (json.JSONDecodeError, IOError):
-            continue
+                    if project_path and session_id:
+                        indexed_sessions.add(session_id)
+                        sessions.append({
+                            "sessionId": session_id,
+                            "projectPath": project_path,
+                            "sessionName": session_name,
+                            "modified": modified,
+                        })
+            except (json.JSONDecodeError, IOError):
+                pass
+
+        # Scan individual .jsonl files for sessions not in index
+        for jsonl_file in project_dir.glob("*.jsonl"):
+            session_id = jsonl_file.stem
+            # Skip subagent sessions and already indexed sessions
+            if session_id.startswith("agent-") or session_id in indexed_sessions:
+                continue
+
+            session = parse_session_jsonl(jsonl_file)
+            # Skip sessions with very short names (likely typos/tests)
+            if session and len(session.get("sessionName", "")) >= 3:
+                sessions.append(session)
 
     # Sort by modified date (most recent first)
-    sessions.sort(key=lambda x: x.get("modified", ""), reverse=True)
+    sessions.sort(key=lambda x: x.get("modified", 0) if isinstance(x.get("modified"), (int, float)) else 0, reverse=True)
     return sessions
 
 

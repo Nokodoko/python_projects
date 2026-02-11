@@ -20,10 +20,10 @@ def choice(file: str) -> List[str] | None:
 
 
 def dmenu(list: List[str], msg: str) -> str | None:
-    dmenu_command = ["dmenu", "-m", "0", "-fn", "VictorMono Nerd Font:size=20",
+    dmenu_command = ["dmenu", "-m", "0", "-fn", "VictorMono Nerd Font Mono:size=11",
                      "-nf", "green", "-nb", "black",
                      "-nf", "cyan", "-sb", "black",
-                     "-p", "🔒", "-bc", "#008b8b", "-t", "Select Password"]
+                     "-p", "\uf023", "-bc", "#008b8b", "-t", "Select Password"]
     try:
         with sp.Popen(dmenu_command, stdin=sp.PIPE,
                       stderr=sp.PIPE, stdout=sp.PIPE, text=True) as dm:
