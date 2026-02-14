@@ -9,68 +9,18 @@ CDP setup: ~/.config/vivaldi-stable.conf must contain:
   --remote-debugging-port=9222
 """
 import glob
-import json
 import os
 import struct
 import subprocess as sp
 import sys
-import urllib.error
-import urllib.request
 from typing import Dict, List, Optional
 
 import helpers as h
+import vivaldi_base as vb
 
 
-CDP_PORT: int = 9222
-CDP_BASE: str = f"http://localhost:{CDP_PORT}"
 PROMPT: str = "Kill tabs:"
 SESSIONS_DIR: str = os.path.expanduser("~/.config/vivaldi/Default/Sessions")
-
-
-def cdp_get(path: str) -> Optional[str]:
-    """HTTP GET to the CDP endpoint. Returns body text or None on failure."""
-    try:
-        req = urllib.request.Request(f"{CDP_BASE}{path}")
-        with urllib.request.urlopen(req, timeout=2) as resp:
-            return resp.read().decode("utf-8")
-    except (urllib.error.URLError, OSError, TimeoutError):
-        return None
-
-
-def cdp_available() -> bool:
-    """Check if the CDP debug port is accepting connections."""
-    return cdp_get("/json/version") is not None
-
-
-def cdp_list_tabs() -> List[Dict[str, str]]:
-    """Fetch open tabs from Vivaldi via CDP. Returns list of {id, title, url}."""
-    body: Optional[str] = cdp_get("/json")
-    if body is None:
-        return []
-
-    tabs: List[Dict[str, str]] = []
-    try:
-        entries = json.loads(body)
-        for entry in entries:
-            if entry.get("type") != "page":
-                continue
-            tabs.append({
-                "id": entry.get("id", ""),
-                "title": entry.get("title", ""),
-                "url": entry.get("url", ""),
-            })
-    except (json.JSONDecodeError, KeyError):
-        pass
-
-    return tabs
-
-
-def cdp_close_tab(tab_id: str) -> bool:
-    """Close a tab by its CDP target ID. Returns True on success."""
-    body: Optional[str] = cdp_get(f"/json/close/{tab_id}")
-    if body is None:
-        return False
-    return "Target is closing" in body
 
 
 # -- SNSS fallback for tab discovery when CDP is not available --
@@ -160,58 +110,6 @@ def get_latest_tabs_file() -> Optional[str]:
     return max(files, key=os.path.getmtime)
 
 
-# -- shared logic --
-
-
-def deduplicate_tabs(tabs: List[Dict[str, str]]) -> List[Dict[str, str]]:
-    """Remove duplicate tabs and filter out empty/blank entries."""
-    seen: set = set()
-    unique: List[Dict[str, str]] = []
-
-    for tab in tabs:
-        title: str = tab["title"].strip()
-        url: str = tab["url"].strip()
-
-        if not title and not url:
-            continue
-        if url in ("about:blank", "chrome://vivaldi-webui/startpage"):
-            continue
-
-        key: str = f"{title}|{url}"
-        if key in seen:
-            continue
-        seen.add(key)
-        unique.append({"id": tab.get("id", ""), "title": title, "url": url})
-
-    return unique
-
-
-def match_tabs(
-    tabs: List[Dict[str, str]], pattern: str
-) -> List[Dict[str, str]]:
-    """Return tabs whose title or URL matches the pattern (case-insensitive)."""
-    pattern_lower: str = pattern.lower()
-    matched: List[Dict[str, str]] = []
-
-    for tab in tabs:
-        title_lower: str = tab["title"].lower()
-        url_lower: str = tab["url"].lower()
-        if pattern_lower in title_lower or pattern_lower in url_lower:
-            matched.append(tab)
-
-    return matched
-
-
-def format_tab_line(tab: Dict[str, str]) -> str:
-    """Format a tab for display in dmenu: title | url."""
-    title: str = tab["title"]
-    url: str = tab["url"]
-
-    if title and title != url:
-        return f"{title}  |  {url}"
-    return url
-
-
 def dmenu_input(prompt: str, items: str = "") -> str:
     """Show a yellow-themed dmenu prompt. Returns user input or empty on cancel."""
     dmenu_command: List[str] = [
@@ -236,10 +134,10 @@ def dmenu_input(prompt: str, items: str = "") -> str:
 
 def main() -> None:
     """Entry point: search for tabs by pattern and close matches via CDP."""
-    use_cdp: bool = cdp_available()
+    use_cdp: bool = vb.cdp_available()
 
     if use_cdp:
-        raw_tabs: List[Dict[str, str]] = cdp_list_tabs()
+        raw_tabs: List[Dict[str, str]] = vb.cdp_list_tabs()
         if not raw_tabs:
             h.notify_send("CDP connected but no tabs found", "critical")
             sys.exit(1)
@@ -255,22 +153,22 @@ def main() -> None:
             h.notify_send("No tabs found in session file", "critical")
             sys.exit(1)
 
-    tabs: List[Dict[str, str]] = deduplicate_tabs(raw_tabs)
+    tabs: List[Dict[str, str]] = vb.deduplicate_tabs(raw_tabs)
 
-    # Step 1: Plain text input — user types a pattern (e.g. "datadog")
+    # Step 1: Plain text input -- user types a pattern (e.g. "datadog")
     search_term: str = dmenu_input(PROMPT)
     if not search_term:
         h.notify_send("Cancelled", "low")
         sys.exit(1)
 
-    matched: List[Dict[str, str]] = match_tabs(tabs, search_term)
+    matched: List[Dict[str, str]] = vb.match_tabs(tabs, search_term)
 
     if not matched:
         h.notify_send(f'No tabs matching "{search_term}"', "low")
         sys.exit(0)
 
     # Step 2: Show matches, confirm with Enter or cancel with Escape
-    confirm_lines: str = "\n".join(format_tab_line(t) for t in matched)
+    confirm_lines: str = "\n".join(vb.format_tab_line(t) for t in matched)
     confirm: str = dmenu_input(
         f"Close {len(matched)} tab(s)?  [Enter=yes]", confirm_lines
     )
@@ -294,7 +192,7 @@ def main() -> None:
         if not tab_id:
             failed += 1
             continue
-        if cdp_close_tab(tab_id):
+        if vb.cdp_close_tab(tab_id):
             closed += 1
         else:
             failed += 1
