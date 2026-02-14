@@ -22,7 +22,7 @@ CDP_BASE: str = f"http://localhost:{CDP_PORT}"
 
 # -- dmenu theming --
 
-DMENU_FONT: str = "VictorMono:size=20"
+DMENU_FONT: str = "VictorMono Nerd Font Mono:size=11"
 VIVALDI_FG: str = "#EF3939"
 VIVALDI_BG: str = "black"
 

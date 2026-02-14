@@ -114,7 +114,7 @@ def dmenu_input(prompt: str, items: str = "") -> str:
     """Show a yellow-themed dmenu prompt. Returns user input or empty on cancel."""
     dmenu_command: List[str] = [
         "dmenu", "-m", "0", "-i", "-l", "20",
-        "-fn", "VictorMono:size=20",
+        "-fn", "VictorMono Nerd Font Mono:size=11",
         "-nf", "yellow", "-nb", "black",
         "-sf", "yellow", "-sb", "black",
         "-t", "Tab Killer", "-bc", "yellow",
