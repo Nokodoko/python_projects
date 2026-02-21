@@ -22,6 +22,10 @@ PROMPT: str = "Vivaldi:"
 
 ACTIONS: dict = {
     "t": {
+        "label": "Tab Tiler",
+        "cmd": ["/home/n0ko/programming/python_projects/scripts/tabTiler.py"],
+    },
+    "x": {
         "label": "Tab Kill",
         "cmd": ["/home/n0ko/programming/python_projects/scripts/tabkill.py"],
     },

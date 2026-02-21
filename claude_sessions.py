@@ -4,6 +4,7 @@ Claude session navigator - lists all Claude Code sessions and opens
 a new zellij pane in the selected project directory.
 """
 
+import argparse
 import json
 import os
 import subprocess as sp
@@ -154,7 +155,21 @@ def resume_session(cwd: str, session_id: str) -> None:
     os.execvp("claude", ["claude", "--resume", session_id, "--dangerously-skip-permissions"])
 
 
+def launch_sidecar(cwd: str) -> None:
+    """Change to project directory and exec into sidecar."""
+    os.chdir(cwd)
+    os.execvp("sidecar", ["sidecar", "-project", cwd])
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Claude session navigator")
+    parser.add_argument(
+        "--sidecar",
+        action="store_true",
+        help="Launch sidecar TUI in the selected session's project directory",
+    )
+    args = parser.parse_args()
+
     sessions = get_sessions()
 
     if not sessions:
@@ -193,8 +208,11 @@ def main() -> None:
         print(f"Directory not found: {project_path}")
         sys.exit(1)
 
-    # Resume claude session in current pane
-    resume_session(project_path, session_id)
+    # Launch sidecar or resume claude session
+    if args.sidecar:
+        launch_sidecar(project_path)
+    else:
+        resume_session(project_path, session_id)
 
 
 if __name__ == "__main__":
