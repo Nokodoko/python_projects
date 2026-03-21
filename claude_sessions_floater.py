@@ -4,58 +4,12 @@ Claude session navigator (floater mode) - lists all Claude Code sessions
 and opens the selected one in a new zellij split pane.
 """
 
-import json
 import os
 import subprocess as sp
 import sys
-from pathlib import Path
 from typing import List, Optional
 
-
-CLAUDE_PROJECTS_DIR = Path.home() / ".claude" / "projects"
-
-
-def get_sessions() -> List[dict]:
-    """Find and parse all sessions-index.json files."""
-    sessions = []
-
-    if not CLAUDE_PROJECTS_DIR.exists():
-        return sessions
-
-    for project_dir in CLAUDE_PROJECTS_DIR.iterdir():
-        if not project_dir.is_dir():
-            continue
-
-        index_file = project_dir / "sessions-index.json"
-        if not index_file.exists():
-            continue
-
-        try:
-            with open(index_file, "r") as f:
-                data = json.load(f)
-
-            for entry in data.get("entries", []):
-                session_id = entry.get("sessionId", "")
-                project_path = entry.get("projectPath", "")
-                custom_title = entry.get("customTitle", "")
-                summary = entry.get("summary", "")
-                first_prompt = entry.get("firstPrompt", "")[:60]
-                modified = entry.get("modified", "")
-
-                session_name = custom_title or summary or first_prompt
-
-                if project_path and session_id:
-                    sessions.append({
-                        "sessionId": session_id,
-                        "projectPath": project_path,
-                        "sessionName": session_name,
-                        "modified": modified,
-                    })
-        except (json.JSONDecodeError, IOError):
-            continue
-
-    sessions.sort(key=lambda x: x.get("modified", ""), reverse=True)
-    return sessions
+from claude_sessions import get_sessions
 
 
 def gum_select(items: List[str], header: str = "Claude Sessions") -> Optional[str]:
@@ -80,10 +34,21 @@ def gum_select(items: List[str], header: str = "Claude Sessions") -> Optional[st
     return output.strip()
 
 
+def update_active_cwd(project_path: str) -> None:
+    """Write the project path to the focus-tracking file so fp and lazygit update."""
+    cwd_file = f"/tmp/cmdr-{os.getuid()}-active-cwd"
+    try:
+        with open(cwd_file, "w") as f:
+            f.write(project_path + "\n")
+    except OSError:
+        pass
+
+
 def open_zellij_pane(cwd: str, session_id: str) -> None:
-    """Open a new zellij split pane and resume the Claude session."""
-    sp.run([
-        "zellij", "run", "--cwd", cwd, "--",
+    """Resume the Claude session in the current pane (swallow pattern)."""
+    update_active_cwd(cwd)
+    os.chdir(cwd)
+    os.execvp("claude", [
         "claude", "--resume", session_id, "--dangerously-skip-permissions"
     ])
 

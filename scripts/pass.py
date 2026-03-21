@@ -21,8 +21,10 @@ def choice(file: str) -> List[str] | None:
 
 def rofi(list: List[str], msg: str) -> str | None:
     rofi_command = ["rofi", "-dmenu",
-                    "-theme", "sidebar-v2",
+                    "-theme", "Arc-Dark",
                     "-font", "VictorMono Nerd Font Mono 11",
+                    "-m", "1",
+                    "-theme-str", "window { location: east; }",
                     "-p", "\uf023",
                     "-mesg", msg,
                     "-i"]

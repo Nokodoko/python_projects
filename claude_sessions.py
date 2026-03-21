@@ -161,12 +161,33 @@ def launch_sidecar(cwd: str) -> None:
     os.execvp("sidecar", ["sidecar", "-project", cwd])
 
 
+def launch_cmdr(cwd: str) -> None:
+    """Change to project directory and exec into cmdr dashboard."""
+    import shutil
+
+    cmdr_path = shutil.which("cmdr")
+    if cmdr_path is None:
+        print(
+            "cmdr not found in PATH. Install with: "
+            "cd ~/Programs/ai/computeCommander && make install",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    os.chdir(cwd)
+    os.execvp("cmdr", ["cmdr", "dashboard"])
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Claude session navigator")
     parser.add_argument(
         "--sidecar",
         action="store_true",
         help="Launch sidecar TUI in the selected session's project directory",
+    )
+    parser.add_argument(
+        "--cmdr",
+        action="store_true",
+        help="Launch cmdr dashboard in the selected session's project directory",
     )
     args = parser.parse_args()
 
@@ -208,8 +229,10 @@ def main() -> None:
         print(f"Directory not found: {project_path}")
         sys.exit(1)
 
-    # Launch sidecar or resume claude session
-    if args.sidecar:
+    # Launch cmdr, sidecar, or resume claude session
+    if args.cmdr:
+        launch_cmdr(project_path)
+    elif args.sidecar:
         launch_sidecar(project_path)
     else:
         resume_session(project_path, session_id)
