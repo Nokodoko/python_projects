@@ -12,7 +12,7 @@ PASS: str = os.getenv('PASS', '')
 def choice(file: str) -> List[str] | None:
     try:
         with open(file, 'r') as f:
-            pw = [line.strip().replace('\\_', '_') for line in f if '_' in line]
+            pw = [line.strip().replace(r'\_', '_') for line in f if line.strip().endswith(r'\_')]
             return pw
     except FileNotFoundError:
         print(f'could not open {file}')
@@ -44,15 +44,13 @@ def rofi(list: List[str], msg: str) -> str | None:
         h.notify_send(f'Error with rofi {e}', 'critical')
 
 
-def clip(selection: str) -> None:
-    # xclip = ['xclip', '-sel', 'c', '-l', '1']
-    xclip = ['xclip', '-sel', 'c']
-    clipped = sp.Popen(xclip, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, text=True)
-    _, err = clipped.communicate(input=selection)
-    if clipped.returncode != 0:
-        h.notify_send(f'No password Copied:{err}', 'critical')
+def clip(password: str) -> None:
+    xclip = ['xclip', '-sel', 'c', '-l', '1']
+    result = sp.run(xclip, input=password, text=True, stderr=sp.PIPE)
+    if result.returncode != 0:
+        h.notify_send(f'No password Copied:{result.stderr}', 'critical')
     else:
-        h.notify_send('Clipboard Cleared!', 'low')
+        h.notify_send('Password Copied!', 'low')
 #
 
 
@@ -63,7 +61,7 @@ def parser(program: str) -> str | None:
             if found:
                 clip(line.strip())
                 sys.exit(0)
-            cleaned = line.replace('\\_', '_')
+            cleaned = line.replace(r'\_', '_')
             if program in cleaned:
                 found = True
         h.notify_send('No password Copied', 'critical')
