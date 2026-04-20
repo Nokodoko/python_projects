@@ -100,7 +100,8 @@ def get_tiled_tabs(ws_url: str) -> List[Dict[str, Any]]:
     """
     result: Any = vb.cdp_ws_evaluate(ws_url, '''
     (function() {
-        var btn = document.querySelector("button[name=TilingToggle]");
+        var wrap = document.querySelector(".tilingtoggle");
+        var btn = wrap ? wrap.querySelector("button") : null;
         if (!btn) return {error: "no TilingToggle"};
         var fiberKey = Object.keys(btn).find(function(k) {
             return k.startsWith("__reactFiber");
@@ -243,7 +244,8 @@ def untile_via_cdp(ws_url: str) -> bool:
     _log("untiling existing tiles")
     result: Any = vb.cdp_ws_evaluate(ws_url, '''
     (function() {
-        var btn = document.querySelector("button[name=TilingToggle]");
+        var wrap = document.querySelector(".tilingtoggle");
+        var btn = wrap ? wrap.querySelector("button") : null;
         if (!btn) return {untiled: false, reason: "no button"};
         var fiberKey = Object.keys(btn).find(function(k) {
             return k.startsWith("__reactFiber");
@@ -277,20 +279,31 @@ def send_tile_via_cdp(ws_url: str, mode: str = DEFAULT_TILE_MODE) -> bool:
     untile_via_cdp(ws_url)
     time.sleep(0.15)
 
-    # Open the tiling popup by setting React component state
+    # Open the tiling popup via the component's togglePopup method.
+    # Vivaldi 7.x no longer honors setState({drawerOpen:true}); popup
+    # visibility is driven by togglePopup()/hidePopup() on the MI
+    # component reached 5 fiber hops above the .tilingtoggle button.
     vb.cdp_ws_evaluate(ws_url, '''
     (function() {
-        var btn = document.querySelector("button[name=TilingToggle]");
+        var wrap = document.querySelector(".tilingtoggle");
+        var btn = wrap ? wrap.querySelector("button") : null;
         if (!btn) return;
         var fiberKey = Object.keys(btn).find(function(k) {
             return k.startsWith("__reactFiber");
         });
         var f = btn[fiberKey];
         for (var i = 0; i < 5; i++) f = f.return;
-        f.stateNode.setState({drawerOpen: true});
+        var c = f.stateNode;
+        // Only open if currently closed (togglePopup is a toggle)
+        if (typeof c.togglePopup === "function") {
+            var isOpen = !!document.querySelector(".PageTiling-Button");
+            if (!isOpen) c.togglePopup();
+        } else if (c.setState) {
+            c.setState({drawerOpen: true});
+        }
     })()
     ''')
-    time.sleep(0.1)  # let popup render
+    time.sleep(0.15)  # let popup render
 
     # Call the matching tile button's onMouseUp handler
     expr: str = f'''
@@ -318,17 +331,23 @@ def send_tile_via_cdp(ws_url: str, mode: str = DEFAULT_TILE_MODE) -> bool:
     result: Any = vb.cdp_ws_evaluate(ws_url, expr)
     _log(f"tile result: {result}")
 
-    # Close the popup
+    # Close the popup via hidePopup() (Vivaldi 7.x API).
     vb.cdp_ws_evaluate(ws_url, '''
     (function() {
-        var btn = document.querySelector("button[name=TilingToggle]");
+        var wrap = document.querySelector(".tilingtoggle");
+        var btn = wrap ? wrap.querySelector("button") : null;
         if (!btn) return;
         var fiberKey = Object.keys(btn).find(function(k) {
             return k.startsWith("__reactFiber");
         });
         var f = btn[fiberKey];
         for (var i = 0; i < 5; i++) f = f.return;
-        f.stateNode.setState({drawerOpen: false});
+        var c = f.stateNode;
+        if (typeof c.hidePopup === "function") {
+            c.hidePopup();
+        } else if (c.setState) {
+            c.setState({drawerOpen: false});
+        }
     })()
     ''')
 
@@ -640,10 +659,6 @@ def cmd_list(ws_url: str) -> None:
         picker_lines,
         header="Currently tiled (select to re-tile, Enter for all):",
     )
-
-    # User cancelled
-    if selected_lines is None:
-        return
 
     # If nothing selected (bare Enter), use all tiled tabs
     if not selected_lines:
