@@ -147,15 +147,22 @@ def get_tiled_tabs(ws_url: str) -> List[Dict[str, Any]]:
 # -- Vivaldi tab selection via React --
 
 
-def select_tabs_vivaldi(ws_url: str, tab_urls: List[str]) -> bool:
+def select_tabs_vivaldi(ws_url: str, tab_ids: List[int]) -> bool:
     """Select tabs using Vivaldi's internal React tab selection API.
 
     chrome.tabs.highlight() doesn't update Vivaldi's internal selection
     state, so tiling only acts on 2 tabs. Instead, we access the tab
     strip React component and call handleClick to simulate ctrl+click
     multi-selection that Vivaldi's tiling system recognizes.
+
+    Matches by chrome tab id (page.id in the React pages prop). IDs are
+    stable across redirects and present for every page in the tab-strip,
+    unlike URLs which can drift (trailing slashes, SPA client-side nav,
+    auth redirects).
     """
-    urls_json: str = json.dumps(tab_urls)
+    # Vivaldi's page.id is often a string form of the chrome tab id
+    # ("tab-<n>" or just "<n>"), so we compare against both.
+    ids_json: str = json.dumps([int(x) for x in tab_ids])
     expr: str = f'''
     (function() {{
         var tabStrip = document.querySelector('.tab-strip');
@@ -181,17 +188,30 @@ def select_tabs_vivaldi(ws_url: str, tab_urls: List[str]) -> bool:
         var pages = component.props.pages;
         if (!pages) return {{error: 'no pages prop'}};
 
-        var targetUrls = {urls_json};
+        var targetIds = {ids_json};
         var matched = [];
         var usedIndices = {{}};
+        var pagesSize = pages.size || pages.length || 0;
 
-        // Match pages by URL, preserving selection order
-        for (var u = 0; u < targetUrls.length; u++) {{
-            var pagesSize = pages.size || pages.length || 0;
+        function pageIdMatches(pageId, targetId) {{
+            if (pageId === targetId) return true;
+            if (pageId === String(targetId)) return true;
+            // Vivaldi sometimes prefixes with "tab-"
+            if (typeof pageId === 'string' &&
+                pageId.indexOf(String(targetId)) >= 0 &&
+                /^(tab-)?\\d+$/.test(pageId) &&
+                pageId.replace(/^tab-/, '') === String(targetId)) {{
+                return true;
+            }}
+            return false;
+        }}
+
+        // Match pages by chrome tab id, preserving selection order
+        for (var u = 0; u < targetIds.length; u++) {{
             for (var idx = 0; idx < pagesSize; idx++) {{
                 if (usedIndices[idx]) continue;
                 var page = pages.get ? pages.get(idx) : pages[idx];
-                if (page && page.url === targetUrls[u]) {{
+                if (page && pageIdMatches(page.id, targetIds[u])) {{
                     matched.push(page);
                     usedIndices[idx] = true;
                     break;
@@ -202,11 +222,17 @@ def select_tabs_vivaldi(ws_url: str, tab_urls: List[str]) -> bool:
         if (matched.length < 2) {{
             var samplePage = pages.get ? pages.get(0) : pages[0];
             var pageKeys = samplePage ? Object.keys(samplePage).slice(0, 10) : [];
+            var pageIds = [];
+            for (var s = 0; s < Math.min(pagesSize, 20); s++) {{
+                var p = pages.get ? pages.get(s) : pages[s];
+                if (p) pageIds.push(p.id);
+            }}
             return {{
-                error: 'matched ' + matched.length + '/' + targetUrls.length,
-                pagesSize: pages.size || pages.length || 0,
+                error: 'matched ' + matched.length + '/' + targetIds.length,
+                pagesSize: pagesSize,
                 sampleKeys: pageKeys,
-                firstTargetUrl: targetUrls[0]
+                pageIds: pageIds,
+                targetIds: targetIds
             }};
         }}
 
@@ -608,6 +634,52 @@ def filter_user_tabs(chrome_tabs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     ]
 
 
+def get_active_window_id(ws_url: str) -> Optional[int]:
+    """Return the windowId of the window whose tab-strip React component
+    is currently rendered (i.e. the one select_tabs_vivaldi operates on).
+
+    Falls back to chrome.windows.getLastFocused if the React lookup fails.
+    """
+    # Prefer the windowId of the first page in the active tab-strip,
+    # since that's definitively the window select_tabs_vivaldi will target.
+    expr: str = '''
+    (function() {
+        var tabStrip = document.querySelector('.tab-strip');
+        if (!tabStrip) return {error: 'no tab-strip'};
+        var fiberKey = Object.keys(tabStrip).find(function(k) {
+            return k.startsWith('__reactFiber');
+        });
+        if (!fiberKey) return {error: 'no fiber'};
+        var f = tabStrip[fiberKey];
+        for (var d = 0; d < 10; d++) {
+            if (f.stateNode && f.stateNode.handleClick) break;
+            f = f.return;
+            if (!f) return {error: 'no handleClick'};
+        }
+        var pages = f.stateNode.props.pages;
+        var size = pages.size || pages.length || 0;
+        for (var i = 0; i < size; i++) {
+            var p = pages.get ? pages.get(i) : pages[i];
+            if (p && typeof p.windowId === 'number') {
+                return {windowId: p.windowId};
+            }
+        }
+        return {error: 'no windowId on pages'};
+    })()
+    '''
+    result: Any = vb.cdp_ws_evaluate(ws_url, expr)
+    if isinstance(result, dict) and isinstance(result.get("windowId"), int):
+        return result["windowId"]
+    # Fallback: chrome.windows.getLastFocused
+    fallback: Any = vb.cdp_ws_evaluate(
+        ws_url,
+        "chrome.windows.getLastFocused({}).then(function(w) { return w.id; })",
+    )
+    if isinstance(fallback, int):
+        return fallback
+    return None
+
+
 def resolve_selections(selected_lines: List[str], tabs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Map gum picker output lines back to tab objects."""
     selected_tabs: List[Dict[str, Any]] = []
@@ -671,16 +743,16 @@ def cmd_list(ws_url: str) -> None:
     # Resolve which tabs to re-tile
     if len(selected_lines) == len(tiled):
         # All selected or none selected -> re-tile all
-        target_urls: List[str] = [t["url"] for t in tiled]
+        target_ids: List[int] = [t["id"] for t in tiled]
     else:
         targets: List[Dict[str, Any]] = resolve_selections(selected_lines, tiled)
         if len(targets) < 2:
             h.notify_send("Select at least 2 tabs to tile", "low")
             return
-        target_urls = [t["url"] for t in targets]
+        target_ids = [t["id"] for t in targets]
 
     # Untile current, select new set, tile
-    sel_ok: bool = select_tabs_vivaldi(ws_url, target_urls)
+    sel_ok: bool = select_tabs_vivaldi(ws_url, target_ids)
     if not sel_ok:
         h.notify_send("Failed to select tabs in Vivaldi", "critical")
         sys.exit(1)
@@ -688,7 +760,7 @@ def cmd_list(ws_url: str) -> None:
     time.sleep(0.2)
     tile_ok: bool = send_tile_via_cdp(ws_url, tile_mode)
     if tile_ok:
-        h.notify_send(f"Re-tiled {len(target_urls)} tabs ({tile_mode})", "low")
+        h.notify_send(f"Re-tiled {len(target_ids)} tabs ({tile_mode})", "low")
     else:
         h.notify_send("Failed to tile", "critical")
         sys.exit(1)
@@ -877,6 +949,19 @@ def cmd_tile(ws_url: str) -> None:
         h.notify_send("No tabs found", "critical")
         sys.exit(1)
 
+    # Restrict picker to the active window's tab-strip.  select_tabs_vivaldi
+    # reads pages from one window's React component, so offering tabs from
+    # other windows in the picker just produces "matched 0/N" failures.
+    active_win: Optional[int] = get_active_window_id(ws_url)
+    _log(f"active_window_id={active_win}")
+    if active_win is not None:
+        before: int = len(tabs)
+        tabs = [t for t in tabs if t.get("windowId") == active_win]
+        _log(f"filtered to active window: {before} -> {len(tabs)} tabs")
+        if not tabs:
+            h.notify_send("No tabs in active window", "critical")
+            sys.exit(1)
+
     # -- build picker lines --
     picker_lines: List[str] = [format_picker_line(t) for t in tabs]
 
@@ -912,22 +997,25 @@ def cmd_tile(ws_url: str) -> None:
     tile_mode: str = pick_tile_mode()
     _log(f"tile_mode={tile_mode}")
 
-    # -- stack selected tabs first --
+    # -- select tabs FIRST while they are still visible in the tab-strip --
+    # (Stacking collapses tabs into a group head, hiding children from the
+    # tab-strip's React `pages` prop, which breaks id-based matching too.)
+    selected_ids: List[int] = [t["id"] for t in selected_tabs]
+    sel_ok: bool = select_tabs_vivaldi(ws_url, selected_ids)
+    _log(f"select_tabs_vivaldi returned {sel_ok}")
+    if not sel_ok:
+        h.notify_send("Failed to select tabs in Vivaldi", "critical")
+        _log("FAIL: select_tabs_vivaldi")
+        sys.exit(1)
+
+    # -- stack selected tabs (after selection, before tile) --
     tab_ids: List[int] = [t["id"] for t in selected_tabs]
     group_id: Optional[str] = create_tab_stack(ws_url, tab_ids)
     if group_id:
         _log(f"stacked tabs: group={group_id}")
         time.sleep(0.2)  # let the stack settle in the UI
     else:
-        _log("stack creation failed, proceeding with select+tile only")
-
-    # -- select tabs via Vivaldi's internal React API --
-    sel_ok: bool = select_tabs_vivaldi(ws_url, selected_urls)
-    _log(f"select_tabs_vivaldi returned {sel_ok}")
-    if not sel_ok:
-        h.notify_send("Failed to select tabs in Vivaldi", "critical")
-        _log("FAIL: select_tabs_vivaldi")
-        sys.exit(1)
+        _log("stack creation failed, proceeding with tile only")
 
     # -- tile via CDP --
     time.sleep(0.2)  # let selection settle
