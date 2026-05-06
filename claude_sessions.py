@@ -14,6 +14,7 @@ from typing import List, Optional
 
 
 CLAUDE_PROJECTS_DIR = Path.home() / ".claude" / "projects"
+CLAUDE_BUSINESS_PROJECTS_DIR = Path.home() / ".claude-business" / "projects"
 
 
 def parse_session_jsonl(jsonl_path: Path) -> Optional[dict]:
@@ -68,15 +69,15 @@ def parse_session_jsonl(jsonl_path: Path) -> Optional[dict]:
     return None
 
 
-def get_sessions() -> List[dict]:
+def get_sessions(projects_dir: Path = CLAUDE_PROJECTS_DIR) -> List[dict]:
     """Find and parse all sessions from index files and individual .jsonl files."""
     sessions = []
     indexed_sessions = set()  # Track sessions found in index files
 
-    if not CLAUDE_PROJECTS_DIR.exists():
+    if not projects_dir.exists():
         return sessions
 
-    for project_dir in CLAUDE_PROJECTS_DIR.iterdir():
+    for project_dir in projects_dir.iterdir():
         if not project_dir.is_dir():
             continue
 
@@ -149,9 +150,17 @@ def gum_select(items: List[str], header: str = "Claude Sessions") -> Optional[st
     return output.strip()
 
 
-def resume_session(cwd: str, session_id: str) -> None:
-    """Change to project directory and exec into claude session."""
+def resume_session(cwd: str, session_id: str, business: bool = False) -> None:
+    """Change to project directory and exec into claude session.
+
+    When ``business`` is True, the spawned claude process inherits
+    ``CLAUDE_CONFIG_DIR=$HOME/.claude-business`` so it resolves credentials,
+    projects, and memory from the isolated business config dir instead of
+    the personal one.
+    """
     os.chdir(cwd)
+    if business:
+        os.environ["CLAUDE_CONFIG_DIR"] = str(Path.home() / ".claude-business")
     os.execvp("claude", ["claude", "--resume", session_id, "--dangerously-skip-permissions"])
 
 
@@ -189,9 +198,19 @@ def main() -> None:
         action="store_true",
         help="Launch cmdr dashboard in the selected session's project directory",
     )
+    parser.add_argument(
+        "--business",
+        action="store_true",
+        help=(
+            "List sessions from ~/.claude-business/projects and resume the "
+            "selected session with CLAUDE_CONFIG_DIR=$HOME/.claude-business "
+            "set, isolating creds/projects/memory from the personal config."
+        ),
+    )
     args = parser.parse_args()
 
-    sessions = get_sessions()
+    projects_dir = CLAUDE_BUSINESS_PROJECTS_DIR if args.business else CLAUDE_PROJECTS_DIR
+    sessions = get_sessions(projects_dir)
 
     if not sessions:
         print("No Claude sessions found")
@@ -211,7 +230,8 @@ def main() -> None:
         display_names.append(display_name)
 
     # Run gum selection
-    selected = gum_select(display_names)
+    header = "Claude Sessions (BUSINESS)" if args.business else "Claude Sessions"
+    selected = gum_select(display_names, header=header)
 
     if not selected:
         sys.exit(0)
@@ -235,7 +255,7 @@ def main() -> None:
     elif args.sidecar:
         launch_sidecar(project_path)
     else:
-        resume_session(project_path, session_id)
+        resume_session(project_path, session_id, business=args.business)
 
 
 if __name__ == "__main__":
